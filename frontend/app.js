@@ -1,5 +1,5 @@
 // Backend base URL
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE = "https://library-management-production-0f26.up.railway.app";
 
 // auth state
 let currentUser = null;
@@ -148,7 +148,7 @@ function setupAuthForms() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -165,7 +165,7 @@ function setupAuthForms() {
       loginStatus.classList.add("success");
     } catch (err) {
       console.error(err);
-      loginStatus.textContent = err.message;
+      loginStatus.textContent = err.message || "Login error";
       loginStatus.classList.add("error");
     }
   });
@@ -189,7 +189,7 @@ function setupAuthForms() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password })
@@ -206,7 +206,7 @@ function setupAuthForms() {
       registerStatus.classList.add("success");
     } catch (err) {
       console.error(err);
-      registerStatus.textContent = err.message;
+      registerStatus.textContent = err.message || "Registration error";
       registerStatus.classList.add("error");
     }
   });
@@ -229,12 +229,16 @@ function setupRequestForm() {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    statusSpan.textContent = "";
-    statusSpan.className = "status-text";
+    if (statusSpan) {
+      statusSpan.textContent = "";
+      statusSpan.className = "status-text";
+    }
 
     if (!authToken || !currentUser) {
-      statusSpan.textContent = "Please login first to request a book.";
-      statusSpan.classList.add("error");
+      if (statusSpan) {
+        statusSpan.textContent = "Please login first to request a book.";
+        statusSpan.classList.add("error");
+      }
       return;
     }
 
@@ -247,13 +251,15 @@ function setupRequestForm() {
     };
 
     if (!payload.bookTitle) {
-      statusSpan.textContent = "Book title is required.";
-      statusSpan.classList.add("error");
+      if (statusSpan) {
+        statusSpan.textContent = "Book title is required.";
+        statusSpan.classList.add("error");
+      }
       return;
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/requests`, {
+      const res = await fetch(`${API_BASE}/api/requests`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -268,12 +274,16 @@ function setupRequestForm() {
       }
 
       form.reset();
-      statusSpan.textContent = "Request submitted successfully!";
-      statusSpan.classList.add("success");
+      if (statusSpan) {
+        statusSpan.textContent = "Request submitted successfully!";
+        statusSpan.classList.add("success");
+      }
     } catch (err) {
       console.error(err);
-      statusSpan.textContent = err.message;
-      statusSpan.classList.add("error");
+      if (statusSpan) {
+        statusSpan.textContent = err.message || "Request error";
+        statusSpan.classList.add("error");
+      }
     }
   });
 }
@@ -287,17 +297,21 @@ function setupTrackRequests() {
   if (!trackBtn || !trackEmailInput) return;
 
   trackBtn.addEventListener("click", async () => {
-    statusSpan.textContent = "";
-    statusSpan.className = "status-text";
+    if (statusSpan) {
+      statusSpan.textContent = "";
+      statusSpan.className = "status-text";
+    }
 
     if (!authToken || !currentUser) {
-      statusSpan.textContent = "Please login to view your requests.";
-      statusSpan.classList.add("error");
+      if (statusSpan) {
+        statusSpan.textContent = "Please login to view your requests.";
+        statusSpan.classList.add("error");
+      }
       return;
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/requests/me`, {
+      const res = await fetch(`${API_BASE}/api/requests/me`, {
         headers: {
           Authorization: `Bearer ${authToken}`
         }
@@ -306,14 +320,16 @@ function setupTrackRequests() {
       if (!res.ok) throw new Error("Failed to fetch your requests");
       const data = await res.json();
       renderStudentRequestsTable(data);
-      statusSpan.textContent =
-        data.length === 0
-          ? "You have no requests yet."
-          : `Found ${data.length} request(s).`;
+      if (statusSpan) {
+        statusSpan.textContent =
+          data.length === 0 ? "You have no requests yet." : `Found ${data.length} request(s).`;
+      }
     } catch (err) {
       console.error(err);
-      statusSpan.textContent = err.message;
-      statusSpan.classList.add("error");
+      if (statusSpan) {
+        statusSpan.textContent = err.message || "Fetch error";
+        statusSpan.classList.add("error");
+      }
     }
   });
 }
@@ -367,7 +383,7 @@ async function fetchAllRequestsForAdmin() {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/requests`, {
+    const res = await fetch(`${API_BASE}/api/requests`, {
       headers: {
         Authorization: `Bearer ${authToken}`
       }
@@ -383,7 +399,7 @@ async function fetchAllRequestsForAdmin() {
   } catch (err) {
     console.error(err);
     if (statusSpan) {
-      statusSpan.textContent = err.message;
+      statusSpan.textContent = err.message || "Admin fetch error";
       statusSpan.classList.add("error");
     }
   }
@@ -450,7 +466,7 @@ async function updateRequestStatus(id, status) {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/requests/${id}`, {
+    const res = await fetch(`${API_BASE}/api/requests/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -470,7 +486,7 @@ async function updateRequestStatus(id, status) {
   } catch (err) {
     console.error(err);
     if (statusSpan) {
-      statusSpan.textContent = err.message;
+      statusSpan.textContent = err.message || "Update error";
       statusSpan.classList.add("error");
     }
   }
