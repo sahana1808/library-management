@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Library Book Request & Tracking System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div class="logo">
+        📚 <span>SmartLibrary</span>
+      </div>
+      <nav class="nav">
+        <a href="#request-section">Request Book</a>
+        <a href="#track-section">Track Requests</a>
+        <a href="#admin-section">Admin Panel</a>
+      </nav>
+    </header>
+
+    <main class="main">
+      <!-- Hero -->
+      <section class="hero">
+        <div class="hero-text">
+          <h1>Library Book Request & Tracking</h1>
+          <p>
+            A simple, modern web portal for students to request books and track
+            approval status in real-time. Designed for college libraries.
+          </p>
+          <div class="hero-cta">
+            <a href="#request-section" class="btn primary">Request a Book</a>
+            <a href="#track-section" class="btn ghost">Track your requests</a>
+          </div>
+        </div>
+        <div class="hero-card">
+          <h3>Today's Highlights</h3>
+          <ul>
+            <li><span class="badge pending"></span> 5 new requests pending</li>
+            <li><span class="badge approved"></span> 12 requests approved</li>
+            <li><span class="badge returned"></span> 7 books returned</li>
+          </ul>
+        </div>
+      </section>
+
+            <!-- Auth Section -->
+      <section id="auth-section" class="card-section">
+        <h2>Login / Register</h2>
+        <p class="section-subtitle">
+          Students can register themselves. Admin account is created by the librarian.
+        </p>
+
+        <div class="auth-toggle">
+          <button id="showLogin" class="btn small secondary">Login</button>
+          <button id="showRegister" class="btn small ghost">Register (Student)</button>
+        </div>
+
+        <!-- Login form -->
+        <form id="login-form" class="form auth-form">
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label for="loginEmail">Email</label>
+              <input type="email" id="loginEmail" required />
+            </div>
+            <div class="form-group form-group-full">
+              <label for="loginPassword">Password</label>
+              <input type="password" id="loginPassword" required />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Login</button>
+            <span id="login-status" class="status-text"></span>
+          </div>
+        </form>
+
+        <!-- Register form -->
+        <form id="register-form" class="form auth-form hidden">
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label for="regName">Full Name</label>
+              <input type="text" id="regName" required />
+            </div>
+            <div class="form-group form-group-full">
+              <label for="regEmail">Email</label>
+              <input type="email" id="regEmail" required />
+            </div>
+            <div class="form-group form-group-full">
+              <label for="regPassword">Password</label>
+              <input type="password" id="regPassword" required />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Register as Student</button>
+            <span id="register-status" class="status-text"></span>
+          </div>
+        </form>
+
+        <div class="auth-summary">
+          <span id="auth-user-label" class="status-text"></span>
+          <button id="logoutBtn" class="btn small ghost hidden">Logout</button>
+        </div>
+      </section>
+
+
+      <!-- Request Section -->
+      <section id="request-section" class="card-section">
+        <h2>Request a Book</h2>
+        <p class="section-subtitle">
+          Fill in your details and the book information. The librarian will review your request.
+        </p>
+
+        <form id="request-form" class="form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="studentName">Student Name</label>
+              <input type="text" id="studentName" required />
+            </div>
+
+            <div class="form-group">
+              <label for="studentEmail">Student Email</label>
+              <input type="email" id="studentEmail" required />
+            </div>
+
+            <div class="form-group">
+              <label for="studentId">Student ID</label>
+              <input type="text" id="studentId" />
+            </div>
+
+            <div class="form-group">
+              <label for="bookTitle">Book Title</label>
+              <input type="text" id="bookTitle" required />
+            </div>
+
+            <div class="form-group">
+              <label for="bookAuthor">Book Author</label>
+              <input type="text" id="bookAuthor" />
+            </div>
+
+            <div class="form-group form-group-full">
+              <label for="notes">Additional Notes (Edition, Publisher, etc.)</label>
+              <textarea id="notes" rows="3"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Submit Request</button>
+            <span id="request-status" class="status-text"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- Track Section -->
+      <section id="track-section" class="card-section">
+        <h2>Track Your Requests</h2>
+        <p class="section-subtitle">
+          Enter your email to view all your past and current book requests.
+        </p>
+
+        <div class="track-search">
+          <input type="email" id="trackEmail" placeholder="Enter your student email" />
+          <button id="trackBtn" class="btn secondary">Fetch Requests</button>
+        </div>
+        <span id="track-status" class="status-text"></span>
+
+        <div class="table-container">
+          <table id="student-requests-table" class="table">
+            <thead>
+              <tr>
+                <th>Requested On</th>
+                <th>Book</th>
+                <th>Status</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Admin Section -->
+      <section id="admin-section" class="card-section">
+        <div class="admin-header">
+          <h2>Admin Panel</h2>
+          <p class="section-subtitle">
+            Librarian view to monitor and update all book requests.
+          </p>
+        </div>
+
+        <div class="admin-login">
+          <input
+            type="password"
+            id="adminPass"
+            placeholder="Enter admin access key (demo: admin123)"
+          />
+          <button id="adminLoginBtn" class="btn ghost">Unlock</button>
+          <span id="admin-login-status" class="status-text"></span>
+        </div>
+
+        <div id="admin-panel" class="admin-panel hidden">
+          <div class="admin-toolbar">
+            <button id="refreshAdminTable" class="btn secondary small">
+              Refresh Requests
+            </button>
+            <span class="status-text" id="admin-panel-status"></span>
+          </div>
+
+          <div class="table-container">
+            <table id="admin-requests-table" class="table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Book</th>
+                  <th>Status</th>
+                  <th>Requested On</th>
+                  <th>Update Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        © <span id="year"></span> SmartLibrary · Library Book Request & Tracking System
+      </p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
