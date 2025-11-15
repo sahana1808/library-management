@@ -1,5 +1,8 @@
-// Backend base URL
-const API_BASE = "https://library-management-production-0f26.up.railway.app";
+// Frontend app.js (fixed)
+// Set this to your Railway backend base (no trailing /)
+// Example: "https://library-management-production-0f26.up.railway.app"
+const API_BASE_URL = "https://library-management-production-0f26.up.railway.app";
+const API_PREFIX = "/api"; // backend routes are mounted under /api
 
 // auth state
 let currentUser = null;
@@ -24,9 +27,11 @@ function loadAuthFromStorage() {
     const parsed = JSON.parse(stored);
     authToken = parsed.token;
     currentUser = parsed.user;
+    updateAuthUI();
   } catch {
     authToken = null;
     currentUser = null;
+    updateAuthUI();
   }
 }
 
@@ -148,24 +153,25 @@ function setupAuthForms() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
+      const res = await fetch(`${API_BASE_URL}${API_PREFIX}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.error || "Login failed");
       }
 
+      // backend should return { token, user }
       saveAuth(data.token, data.user);
       loginForm.reset();
       loginStatus.textContent = "Logged in successfully.";
       loginStatus.classList.add("success");
     } catch (err) {
       console.error(err);
-      loginStatus.textContent = err.message || "Login error";
+      loginStatus.textContent = err.message || "Login failed";
       loginStatus.classList.add("error");
     }
   });
@@ -189,13 +195,13 @@ function setupAuthForms() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/register`, {
+      const res = await fetch(`${API_BASE_URL}${API_PREFIX}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password })
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.error || "Registration failed");
       }
@@ -206,7 +212,7 @@ function setupAuthForms() {
       registerStatus.classList.add("success");
     } catch (err) {
       console.error(err);
-      registerStatus.textContent = err.message || "Registration error";
+      registerStatus.textContent = err.message || "Registration failed";
       registerStatus.classList.add("error");
     }
   });
@@ -243,7 +249,6 @@ function setupRequestForm() {
     }
 
     const payload = {
-      // studentName & email come from token on backend
       studentId: document.getElementById("studentId").value.trim(),
       bookTitle: document.getElementById("bookTitle").value.trim(),
       bookAuthor: document.getElementById("bookAuthor").value.trim(),
@@ -259,7 +264,7 @@ function setupRequestForm() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/requests`, {
+      const res = await fetch(`${API_BASE_URL}${API_PREFIX}/requests`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -268,8 +273,8 @@ function setupRequestForm() {
         body: JSON.stringify(payload)
       });
 
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to submit request");
       }
 
@@ -281,7 +286,7 @@ function setupRequestForm() {
     } catch (err) {
       console.error(err);
       if (statusSpan) {
-        statusSpan.textContent = err.message || "Request error";
+        statusSpan.textContent = err.message || "Failed to submit request";
         statusSpan.classList.add("error");
       }
     }
@@ -311,14 +316,14 @@ function setupTrackRequests() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/requests/me`, {
+      const res = await fetch(`${API_BASE_URL}${API_PREFIX}/requests/me`, {
         headers: {
           Authorization: `Bearer ${authToken}`
         }
       });
 
-      if (!res.ok) throw new Error("Failed to fetch your requests");
-      const data = await res.json();
+      const data = await res.json().catch(() => ([]));
+      if (!res.ok) throw new Error(data.error || "Failed to fetch your requests");
       renderStudentRequestsTable(data);
       if (statusSpan) {
         statusSpan.textContent =
@@ -327,7 +332,7 @@ function setupTrackRequests() {
     } catch (err) {
       console.error(err);
       if (statusSpan) {
-        statusSpan.textContent = err.message || "Fetch error";
+        statusSpan.textContent = err.message || "Failed to fetch requests";
         statusSpan.classList.add("error");
       }
     }
@@ -383,14 +388,14 @@ async function fetchAllRequestsForAdmin() {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/requests`, {
+    const res = await fetch(`${API_BASE_URL}${API_PREFIX}/requests`, {
       headers: {
         Authorization: `Bearer ${authToken}`
       }
     });
-    if (!res.ok) throw new Error("Failed to fetch admin requests");
+    const data = await res.json().catch(() => ([]));
+    if (!res.ok) throw new Error(data.error || "Failed to fetch admin requests");
 
-    const data = await res.json();
     renderAdminRequestsTable(data);
 
     if (statusSpan) {
@@ -399,7 +404,7 @@ async function fetchAllRequestsForAdmin() {
   } catch (err) {
     console.error(err);
     if (statusSpan) {
-      statusSpan.textContent = err.message || "Admin fetch error";
+      statusSpan.textContent = err.message || "Failed to fetch requests";
       statusSpan.classList.add("error");
     }
   }
@@ -466,7 +471,7 @@ async function updateRequestStatus(id, status) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/requests/${id}`, {
+    const res = await fetch(`${API_BASE_URL}${API_PREFIX}/requests/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -475,7 +480,10 @@ async function updateRequestStatus(id, status) {
       body: JSON.stringify({ status })
     });
 
-    if (!res.ok) throw new Error("Failed to update status");
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || "Failed to update status");
+    }
 
     if (statusSpan) {
       statusSpan.textContent = "Status updated.";
@@ -486,7 +494,7 @@ async function updateRequestStatus(id, status) {
   } catch (err) {
     console.error(err);
     if (statusSpan) {
-      statusSpan.textContent = err.message || "Update error";
+      statusSpan.textContent = err.message || "Failed to update status";
       statusSpan.classList.add("error");
     }
   }
