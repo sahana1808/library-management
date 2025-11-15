@@ -1,6 +1,5 @@
-// Frontend app.js (fixed)
+// app.js (improved)
 // Set this to your Railway backend base (no trailing /)
-// Example: "https://library-management-production-0f26.up.railway.app"
 const API_BASE_URL = "https://library-management-production-0f26.up.railway.app";
 const API_PREFIX = "/api"; // backend routes are mounted under /api
 
@@ -18,6 +17,42 @@ document.addEventListener("DOMContentLoaded", () => {
   setupTrackRequests();
   setupAdminPanel();
 });
+
+// ---------- small helpers ----------
+async function safeJson(res) {
+  const text = await res.text().catch(() => "");
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { raw: text };
+  }
+}
+
+// wrapper that prefixes base URL and handles auth header
+async function apiFetch(path, opts = {}) {
+  const url = `${API_BASE_URL}${API_PREFIX}${path}`;
+  opts.headers = opts.headers || {};
+  if (authToken) opts.headers.Authorization = `Bearer ${authToken}`;
+  // default content-type for JSON body if body present and no header set
+  if (opts.body && !opts.headers["Content-Type"]) {
+    opts.headers["Content-Type"] = "application/json";
+  }
+
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (err) {
+    // network error (CORS, DNS, offline...)
+    throw new Error(`Network error: ${err.message}`);
+  }
+
+  const data = await safeJson(res);
+  if (!res.ok) {
+    const msg = data.error || data.message || data.raw || `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
+  return data;
+}
 
 // ===== Auth helpers =====
 function loadAuthFromStorage() {
@@ -56,12 +91,9 @@ function updateAuthUI() {
   const adminSection = document.getElementById("admin-section");
 
   if (currentUser) {
-    if (label) {
-      label.textContent = `Logged in as ${currentUser.name} (${currentUser.role})`;
-    }
+    if (label) label.textContent = `Logged in as ${currentUser.name} (${currentUser.role})`;
     if (logoutBtn) logoutBtn.classList.remove("hidden");
 
-    // Pre-fill student email in track/request sections
     const studentEmailInput = document.getElementById("studentEmail");
     const trackEmailInput = document.getElementById("trackEmail");
     if (studentEmailInput) {
@@ -73,18 +105,13 @@ function updateAuthUI() {
       trackEmailInput.readOnly = true;
     }
 
-    // Admin section visibility
     if (adminSection) {
-      if (currentUser.role === "admin") {
-        adminSection.classList.remove("hidden");
-      } else {
-        adminSection.classList.add("hidden");
-      }
+      if (currentUser.role === "admin") adminSection.classList.remove("hidden");
+      else adminSection.classList.add("hidden");
     }
 
     if (requestStatusSpan) {
-      requestStatusSpan.textContent =
-        "You are logged in. You can submit book requests.";
+      requestStatusSpan.textContent = "You are logged in. You can submit book requests.";
       requestStatusSpan.className = "status-text";
     }
   } else {
@@ -102,9 +129,7 @@ function updateAuthUI() {
       trackEmailInput.readOnly = false;
     }
 
-    if (adminSection) {
-      adminSection.classList.add("hidden");
-    }
+    if (adminSection) adminSection.classList.add("hidden");
   }
 }
 
@@ -123,7 +148,6 @@ function setupAuthForms() {
     return;
   }
 
-  // toggle views
   if (showLoginBtn && showRegisterBtn) {
     showLoginBtn.addEventListener("click", () => {
       loginForm.classList.remove("hidden");
@@ -153,18 +177,10 @@ function setupAuthForms() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}${API_PREFIX}/auth/login`, {
+      const data = await apiFetch("/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || "Login failed");
-      }
-
-      // backend should return { token, user }
       saveAuth(data.token, data.user);
       loginForm.reset();
       loginStatus.textContent = "Logged in successfully.";
@@ -195,17 +211,10 @@ function setupAuthForms() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}${API_PREFIX}/auth/register`, {
+      const data = await apiFetch("/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password })
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || "Registration failed");
-      }
-
       saveAuth(data.token, data.user);
       registerForm.reset();
       registerStatus.textContent = "Registered and logged in as student.";
@@ -217,11 +226,7 @@ function setupAuthForms() {
     }
   });
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      clearAuth();
-    });
-  }
+  if (logoutBtn) logoutBtn.addEventListener("click", clearAuth);
 
   updateAuthUI();
 }
@@ -264,19 +269,10 @@ function setupRequestForm() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}${API_PREFIX}/requests`, {
+      await apiFetch("/requests", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`
-        },
         body: JSON.stringify(payload)
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to submit request");
-      }
 
       form.reset();
       if (statusSpan) {
@@ -316,18 +312,10 @@ function setupTrackRequests() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}${API_PREFIX}/requests/me`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`
-        }
-      });
-
-      const data = await res.json().catch(() => ([]));
-      if (!res.ok) throw new Error(data.error || "Failed to fetch your requests");
+      const data = await apiFetch("/requests/me");
       renderStudentRequestsTable(data);
       if (statusSpan) {
-        statusSpan.textContent =
-          data.length === 0 ? "You have no requests yet." : `Found ${data.length} request(s).`;
+        statusSpan.textContent = data.length === 0 ? "You have no requests yet." : `Found ${data.length} request(s).`;
       }
     } catch (err) {
       console.error(err);
@@ -346,7 +334,6 @@ function renderStudentRequestsTable(requests) {
 
   requests.forEach((req) => {
     const tr = document.createElement("tr");
-
     const created = new Date(req.createdAt).toLocaleString();
     const book = `${req.bookTitle}${req.bookAuthor ? " — " + req.bookAuthor : ""}`;
     const statusPill = createStatusPill(req.status);
@@ -357,7 +344,6 @@ function renderStudentRequestsTable(requests) {
       <td></td>
       <td>${escapeHtml(req.notes || "-")}</td>
     `;
-
     tr.children[2].appendChild(statusPill);
     tbody.appendChild(tr);
   });
@@ -366,10 +352,8 @@ function renderStudentRequestsTable(requests) {
 // ===== Admin Panel =====
 function setupAdminPanel() {
   const refreshBtn = document.getElementById("refreshAdminTable");
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", fetchAllRequestsForAdmin);
-  }
-  updateAuthUI(); // show/hide admin section initially
+  if (refreshBtn) refreshBtn.addEventListener("click", fetchAllRequestsForAdmin);
+  updateAuthUI();
 }
 
 async function fetchAllRequestsForAdmin() {
@@ -388,19 +372,9 @@ async function fetchAllRequestsForAdmin() {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}${API_PREFIX}/requests`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`
-      }
-    });
-    const data = await res.json().catch(() => ([]));
-    if (!res.ok) throw new Error(data.error || "Failed to fetch admin requests");
-
+    const data = await apiFetch("/requests");
     renderAdminRequestsTable(data);
-
-    if (statusSpan) {
-      statusSpan.textContent = `Loaded ${data.length} request(s).`;
-    }
+    if (statusSpan) statusSpan.textContent = `Loaded ${data.length} request(s).`;
   } catch (err) {
     console.error(err);
     if (statusSpan) {
@@ -419,7 +393,6 @@ function renderAdminRequestsTable(requests) {
 
   requests.forEach((req) => {
     const tr = document.createElement("tr");
-
     const created = new Date(req.createdAt).toLocaleString();
     const book = `${req.bookTitle}${req.bookAuthor ? " — " + req.bookAuthor : ""}`;
 
@@ -436,29 +409,26 @@ function renderAdminRequestsTable(requests) {
 
     const statusCell = tr.children[2];
     const actionCell = tr.children[4];
-
     statusCell.appendChild(createStatusPill(req.status));
 
     const select = document.createElement("select");
-    statusOptions.forEach((status) => {
+    statusOptions.forEach((s) => {
       const opt = document.createElement("option");
-      opt.value = status;
-      opt.textContent = status;
-      if (status === req.status) opt.selected = true;
+      opt.value = s;
+      opt.textContent = s;
+      if (s === req.status) opt.selected = true;
       select.appendChild(opt);
     });
 
     const updateBtn = document.createElement("button");
     updateBtn.textContent = "Update";
     updateBtn.className = "btn small secondary";
-
     updateBtn.addEventListener("click", async () => {
       await updateRequestStatus(req._id, select.value);
     });
 
     actionCell.appendChild(select);
     actionCell.appendChild(updateBtn);
-
     tbody.appendChild(tr);
   });
 }
@@ -471,25 +441,15 @@ async function updateRequestStatus(id, status) {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}${API_PREFIX}/requests/${id}`, {
+    await apiFetch(`/requests/${id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`
-      },
       body: JSON.stringify({ status })
     });
-
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d.error || "Failed to update status");
-    }
 
     if (statusSpan) {
       statusSpan.textContent = "Status updated.";
       statusSpan.classList.add("success");
     }
-
     await fetchAllRequestsForAdmin();
   } catch (err) {
     console.error(err);
@@ -511,13 +471,7 @@ function createStatusPill(status) {
 function escapeHtml(str) {
   return str
     ? str.replace(/[&<>"']/g, (c) => {
-        const map = {
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#039;"
-        };
+        const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
         return map[c];
       })
     : "";
